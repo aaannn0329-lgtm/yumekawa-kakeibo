@@ -513,6 +513,62 @@ button { cursor: pointer; border: none; background: none; }
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(40deg); }
 }
 
+/* ---- 記録できた！／使いすぎお知らせ ---- */
+.result-view { padding-top: calc(env(safe-area-inset-top, 0px) + 16px); }
+.result-card { text-align: center; padding: 22px 20px 26px; }
+.result-deco {
+  font-size: 20px; letter-spacing: .5em;
+  color: #ffa6cf;
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+.result-deco.soft { color: #c9b0ff; }
+.result-wanko {
+  width: min(48vw, 190px); aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid #fff;
+  box-shadow: 0 8px 24px rgba(180, 140, 255, .3);
+  margin: 6px auto 10px;
+  display: block;
+  animation: pop .5s cubic-bezier(.3, 1.6, .5, 1);
+}
+@keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.result-title { margin: 6px 0 4px; font-size: 28px; font-weight: 900; line-height: 1.35; color: var(--number); }
+.result-amount {
+  margin: 4px 0 0; font-size: 40px; font-weight: 900;
+  color: var(--number); font-variant-numeric: tabular-nums;
+}
+.result-amount.income { color: var(--cash-text); }
+.result-sub { margin: 2px 0 0; font-size: 14px; color: var(--text-soft); font-weight: 700; }
+.streak.big { margin-top: 16px; padding: 10px 20px; font-size: 17px; }
+.streak.big b { font-size: 26px; }
+.result-msg {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff0f8, #f1eaff);
+  font-size: 15px; font-weight: 700; line-height: 1.7;
+}
+.result-msg:empty { display: none; }
+.result-cheer { margin: 14px 0 0; font-size: 14px; color: var(--text-soft); font-weight: 700; }
+
+.week-box { margin-top: 12px; }
+.week-spent { margin: 2px 0; font-size: 40px; font-weight: 900; color: #d0457f; font-variant-numeric: tabular-nums; }
+.week-budget { margin: 0; font-size: 14px; color: var(--text-soft); }
+.week-budget b { color: var(--number); }
+
+.week-alert {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  text-align: left;
+  font-size: 15px; font-weight: 700;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fff, #fff0f7);
+}
+.week-alert img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.week-alert small { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+.week-alert:active { transform: scale(.98); }
+
 @media (max-width: 360px) {
   .remaining { font-size: 40px; }
   .donut { width: 120px; height: 120px; }

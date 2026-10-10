@@ -30,6 +30,18 @@
     { label: '電車',     amount: 200,  category: 'transit' },
   ];
 
+  // いちばん多かったカテゴリへのやさしい一言
+  const TOP_CATEGORY_MESSAGES = {
+    food:    'いちばん多かったのは「食費」だったよ。おいしいもの、たくさん食べられたね🍙',
+    cafe:    'いちばん多かったのは「カフェ」だったよ。ほっとひと息つけたなら、それも大事な時間☕',
+    daily:   'いちばん多かったのは「日用品」だったよ。おうちのこと、ちゃんとそろえてえらいね🧴',
+    transit: 'いちばん多かったのは「交通」だったよ。たくさんおでかけ、おつかれさま🚃',
+    beauty:  'いちばん多かったのは「美容」だったよ。かわいくなるのも、自分を大切にすることだよ💄',
+    hobby:   'いちばん多かったのは「趣味」だったよ。好きなことでいっぱい楽しめたね🎀',
+    fixed:   'いちばん多かったのは「固定費」だったよ。支払いが重なっただけかも。気にしすぎないでね🏠',
+    other:   'いちばん多かったのは「その他」だったよ。いろいろあった一週間だったね✨',
+  };
+
   // ---------- ユーティリティ ----------
   const $ = (sel) => document.querySelector(sel);
   const pad = (n) => String(n).padStart(2, '0');
@@ -54,6 +66,7 @@
           entries: Array.isArray(s.entries) ? s.entries : [],
           favorites: Array.isArray(s.favorites) ? s.favorites : [],
           lastMethod: s.lastMethod || 'credit',
+          overShownWeek: s.overShownWeek || '',
         };
       }
     } catch (e) {
@@ -64,6 +77,7 @@
       entries: [],
       favorites: DEFAULT_FAVORITES.map((f) => ({ id: uid(), ...f })),
       lastMethod: 'credit',
+      overShownWeek: '',
     };
   }
 
@@ -92,6 +106,26 @@
       byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
     }
     return { spent, income, byMethod, byCategory, count: monthEntries.length };
+  }
+
+  // 週（月曜はじまり）の集計。週の予算 = 月の予算 × 7 ÷ その月の日数
+  function weekStats(now = new Date()) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    const startKey = dateKey(start);
+    const todayKey = dateKey(now);
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const weekBudget = Math.round((state.budget * 7) / daysInMonth);
+
+    const byCategory = {};
+    let spent = 0;
+    for (const e of state.entries) {
+      if (e.type !== 'expense' || e.date < startKey || e.date > todayKey) continue;
+      spent += e.amount;
+      byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+    }
+    const top = Object.keys(byCategory).sort((a, b) => byCategory[b] - byCategory[a])[0] || null;
+    return { weekKey: startKey, spent, weekBudget, top, over: spent > weekBudget };
   }
 
   // 連続記録日数：きょう（まだならきのう）からさかのぼって数える
@@ -146,6 +180,8 @@
     $('#sum-bank').textContent = yen(byMethod.bank);
     $('#sum-cash').textContent = yen(byMethod.cash);
 
+    $('#week-alert').hidden = !weekStats(now).over;
+
     renderWanko(now, spent, budget, count);
     renderPie(byCategory, spent);
     renderTodayList(now);
@@ -164,7 +200,7 @@
     } else if (usage >= 1) {
       img = 'sad';
       serif = '予算こえちゃった…でも気づけたのがえらいよ';
-    } else if (usage > pace + 0.1) {
+    } else if (usage > pace + 0.1 || weekStats(now).over) {
       img = 'sad';
       serif = 'ちょっとペースはやめかも…いっしょにゆっくりいこ';
     } else if (usage > pace) {
@@ -385,13 +421,10 @@
     state.lastMethod = form.method;
     saveState();
 
+    lastSaved = state.entries[state.entries.length - 1];
     sparkleBurst($('#btn-save'));
-    showToast('きろくできたよ！♡');
-    goHome();
-    const w = $('#home-wanko');
-    w.classList.remove('bounce');
-    void w.offsetWidth;
-    w.classList.add('bounce');
+    // 記録画面を「記録できた！」に置きかえる（戻るボタンでホームに戻れるように）
+    setTimeout(() => showResult('done'), 350);
   });
 
   function nudge(selector, message) {
@@ -502,20 +535,79 @@
     bindNumberInput($('#fav-amount'));
   }
 
-  // ---------- 画面切り替え（#record で記録画面。スマホの戻るボタンにも対応） ----------
+  // ---------- 記録できた！／使いすぎお知らせ ----------
+  let lastSaved = null;
+
+  function renderDone() {
+    const e = lastSaved;
+    const c = catById(e.category);
+    const isIncome = e.type === 'income';
+    const amountEl = $('#done-amount');
+    amountEl.textContent = (isIncome ? '+' : '') + yen(e.amount);
+    amountEl.classList.toggle('income', isIncome);
+    $('#done-sub').textContent = [`${c.emoji} ${c.name}`, METHODS[e.method]?.name, e.memo].filter(Boolean).join('・');
+    $('#done-streak').textContent = calcStreak();
+
+    const w = weekStats();
+    let msg;
+    if (isIncome) msg = '収入もきろくできてえらい！';
+    else if (w.over) msg = '';
+    else msg = `今週はあと ${yen(w.weekBudget - w.spent)} 使えるよ。いい感じ♡`;
+    $('#done-msg').textContent = msg;
+    // 週の予算を超えていて、今週まだお知らせしていなければ次はお知らせ画面へ
+    $('#btn-done-next').textContent = needOverNotice() ? 'つぎへ ›' : 'ホームにもどる ♡';
+  }
+
+  const needOverNotice = () => {
+    const w = weekStats();
+    return w.over && state.overShownWeek !== w.weekKey;
+  };
+
+  function renderOver() {
+    const w = weekStats();
+    $('#over-spent').textContent = yen(w.spent);
+    $('#over-budget').textContent = yen(w.weekBudget);
+    $('#over-diff').textContent = w.over ? `${yen(w.spent - w.weekBudget)} オーバー` : `あと ${yen(w.weekBudget - w.spent)}`;
+    $('#over-msg').textContent = w.top ? TOP_CATEGORY_MESSAGES[w.top] || '' : '';
+    state.overShownWeek = w.weekKey;
+    saveState();
+  }
+
+  $('#btn-done-next').addEventListener('click', () => {
+    if (needOverNotice()) showResult('over');
+    else goHome();
+  });
+  $('#btn-over-ok').addEventListener('click', goHome);
+  $('#week-alert').addEventListener('click', () => {
+    openedFromHome = true;
+    location.hash = 'over';
+  });
+
+  // ---------- 画面切り替え（#record / #done / #over。スマホの戻るボタンにも対応） ----------
   let openedFromHome = false;
+  const VIEWS = ['home', 'record', 'done', 'over'];
+
+  function currentView() {
+    const v = location.hash.slice(1);
+    if (v === 'done' && !lastSaved) return 'home'; // 再読み込みなどで内容がないとき
+    return VIEWS.includes(v) ? v : 'home';
+  }
 
   function route() {
-    const isRecord = location.hash === '#record';
-    $('#view-home').hidden = isRecord;
-    $('#view-record').hidden = !isRecord;
+    const view = currentView();
+    for (const v of VIEWS) $('#view-' + v).hidden = v !== view;
     closeSheet();
-    if (isRecord) {
-      resetForm();
-    } else {
-      renderHome();
-    }
+    if (view === 'record') resetForm();
+    else if (view === 'done') renderDone();
+    else if (view === 'over') renderOver();
+    else renderHome();
     window.scrollTo(0, 0);
+  }
+
+  // 今の画面を置きかえて表示（履歴を増やさない）
+  function showResult(view) {
+    history.replaceState(null, '', '#' + view);
+    route();
   }
 
   function goHome() {
@@ -537,7 +629,7 @@
 
   // 日付が変わったときやアプリに戻ってきたときに更新
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && location.hash !== '#record') renderHome();
+    if (!document.hidden && currentView() === 'home') renderHome();
   });
 
   // ---------- 演出 ----------

@@ -64,6 +64,12 @@
       <p class="income-line" id="income-line" hidden></p>
     </section>
 
+    <!-- 今週のようす（週の予算を超えたときだけ表示） -->
+    <button class="card week-alert" id="week-alert" hidden>
+      <img src="images/wanko_sad.png" alt="">
+      <span>今週ちょっと使いすぎかも…<br><small>タップしてようすを見る ›</small></span>
+    </button>
+
     <!-- 支払い方法別 -->
     <section class="methods">
       <div class="method-card m-credit">
@@ -160,6 +166,46 @@
     <div class="bottom-space"></div>
     <div class="bottom-bar">
       <button class="big-btn sparkle-btn" id="btn-save">✦ キラッと記録する ✦</button>
+    </div>
+  </main>
+
+  <!-- ===================== 記録できた！ ===================== -->
+  <main id="view-done" class="view result-view" hidden>
+    <section class="card result-card">
+      <div class="result-deco" aria-hidden="true">✦ ♡ ✧ ♥ ✦</div>
+      <img class="result-wanko" src="images/wanko_smile.png" alt="にっこりわんこ">
+      <h1 class="result-title">きろくできたよ！</h1>
+      <p class="result-amount" id="done-amount"></p>
+      <p class="result-sub" id="done-sub"></p>
+      <div class="streak big">
+        <span class="heart">♥</span>
+        <span><b id="done-streak">0</b>日れんぞく記録中</span>
+      </div>
+      <p class="result-msg" id="done-msg"></p>
+    </section>
+    <div class="bottom-space"></div>
+    <div class="bottom-bar">
+      <button class="big-btn" id="btn-done-next">ホームにもどる ♡</button>
+    </div>
+  </main>
+
+  <!-- ===================== 使いすぎお知らせ ===================== -->
+  <main id="view-over" class="view result-view" hidden>
+    <section class="card result-card">
+      <div class="result-deco soft" aria-hidden="true">♡ ✧ ♡</div>
+      <img class="result-wanko" src="images/wanko_sad.png" alt="こまり顔のわんこ">
+      <h1 class="result-title">今週ちょっと<br>使いすぎかも…</h1>
+      <div class="week-box">
+        <p class="label">今週つかった金額</p>
+        <p class="week-spent" id="over-spent"></p>
+        <p class="week-budget">週の予算 <b id="over-budget"></b>（<span id="over-diff"></span>）</p>
+      </div>
+      <p class="result-msg" id="over-msg"></p>
+      <p class="result-cheer">来週もいっしょに、ゆっくりがんばろうね ♡</p>
+    </section>
+    <div class="bottom-space"></div>
+    <div class="bottom-bar">
+      <button class="big-btn" id="btn-over-ok">わかった！ホームへ</button>
     </div>
   </main>
 

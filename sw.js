@@ -1,6 +1,6 @@
 // オフラインでも開けるようにアプリ本体をキャッシュする
 // ファイルを更新したら CACHE_NAME の数字を上げてください
-const CACHE_NAME = 'yumekawa-kakeibo-v1';
+const CACHE_NAME = 'yumekawa-kakeibo-v2';
 const APP_FILES = [
   './',
   './index.html',
