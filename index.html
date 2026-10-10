@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ゆめかわ家計簿</title>
+  <meta name="description" content="わんこといっしょにつける、ゆめかわな家計簿">
+  <meta name="theme-color" content="#ffd6ec">
+
+  <!-- ホーム画面に追加（PWA / iPhone） -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ゆめかわ家計簿">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- キラキラ・ハートの飾り -->
+  <div class="sparkles" aria-hidden="true">
+    <span class="sp s1">✦</span><span class="sp s2">♡</span><span class="sp s3">✧</span>
+    <span class="sp s4">♥</span><span class="sp s5">✦</span><span class="sp s6">✧</span>
+    <span class="sp s7">♡</span><span class="sp s8">✦</span>
+  </div>
+
+  <!-- ===================== ホーム ===================== -->
+  <main id="view-home" class="view">
+    <header class="app-header">
+      <div>
+        <p class="month-label" id="month-label"></p>
+        <h1 class="app-title">ゆめかわ家計簿 <span class="title-deco">✦</span></h1>
+      </div>
+      <button class="icon-btn" id="btn-settings" aria-label="予算の設定">⚙︎</button>
+    </header>
+
+    <!-- 残り予算 -->
+    <section class="card hero">
+      <div class="wanko-row">
+        <img class="wanko" id="home-wanko" src="images/wanko_normal.png" alt="わんこ">
+        <p class="bubble" id="home-serif">きょうもいっしょにがんばろうね</p>
+      </div>
+
+      <p class="label">今月の残り予算</p>
+      <p class="remaining" id="remaining"><span class="yen">¥</span>0</p>
+
+      <div class="bar" role="progressbar" aria-label="予算の使用率" aria-valuemin="0" aria-valuemax="100" id="usage-bar">
+        <div class="bar-fill" id="usage-fill"></div>
+      </div>
+      <div class="bar-caption">
+        <span>つかった <b id="used-amount">¥0</b> / <span id="budget-amount">¥0</span></span>
+        <b id="usage-percent">0%</b>
+      </div>
+
+      <div class="streak">
+        <span class="heart">♥</span>
+        <span><b id="streak-days">0</b>日れんぞく記録中</span>
+      </div>
+      <p class="income-line" id="income-line" hidden></p>
+    </section>
+
+    <!-- 支払い方法別 -->
+    <section class="methods">
+      <div class="method-card m-credit">
+        <p class="m-name"><span class="m-dot"></span>クレカ</p>
+        <p class="m-amount" id="sum-credit">¥0</p>
+      </div>
+      <div class="method-card m-bank">
+        <p class="m-name"><span class="m-dot"></span>銀行</p>
+        <p class="m-amount" id="sum-bank">¥0</p>
+      </div>
+      <div class="method-card m-cash">
+        <p class="m-name"><span class="m-dot"></span>現金</p>
+        <p class="m-amount" id="sum-cash">¥0</p>
+      </div>
+    </section>
+
+    <!-- カテゴリ別 -->
+    <section class="card">
+      <h2 class="card-title"><span class="deco">♡</span> カテゴリ別</h2>
+      <div class="pie-wrap" id="pie-wrap">
+        <div class="donut" id="donut">
+          <div class="donut-hole">
+            <span class="donut-label">今月の支出</span>
+            <span class="donut-total" id="donut-total">¥0</span>
+          </div>
+        </div>
+        <ul class="legend" id="legend"></ul>
+      </div>
+      <p class="empty" id="pie-empty">まだ支出がないよ。記録するとここにグラフが出るよ ✧</p>
+    </section>
+
+    <!-- きょうの記録 -->
+    <section class="card">
+      <h2 class="card-title"><span class="deco">✦</span> きょうの記録</h2>
+      <ul class="entry-list" id="today-list"></ul>
+      <p class="empty" id="today-empty">きょうはまだ記録がないよ</p>
+    </section>
+
+    <div class="bottom-space"></div>
+    <div class="bottom-bar">
+      <button class="big-btn" id="btn-go-record">♡ きょうの記録をつける</button>
+    </div>
+  </main>
+
+  <!-- ===================== 記録する ===================== -->
+  <main id="view-record" class="view" hidden>
+    <header class="app-header">
+      <button class="icon-btn" id="btn-back" aria-label="もどる">‹</button>
+      <h1 class="app-title center">記録する</h1>
+      <span class="icon-btn ghost" aria-hidden="true"></span>
+    </header>
+
+    <div class="segment" role="tablist" aria-label="支出と収入">
+      <button class="seg-btn active" data-type="expense" role="tab">支出</button>
+      <button class="seg-btn" data-type="income" role="tab">収入</button>
+    </div>
+
+    <section class="card amount-card">
+      <label class="label" for="amount-input">金額</label>
+      <div class="amount-field">
+        <span class="yen">¥</span>
+        <input id="amount-input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" autocomplete="off">
+      </div>
+    </section>
+
+    <section class="card" id="fav-section">
+      <div class="card-title-row">
+        <h2 class="card-title"><span class="deco">✧</span> よく使う</h2>
+        <button class="text-btn" id="btn-fav-edit">へんしゅう</button>
+      </div>
+      <p class="hint" id="fav-hint" hidden>タップして編集できるよ</p>
+      <div class="chips" id="fav-list"></div>
+    </section>
+
+    <section class="card" id="category-section">
+      <h2 class="card-title"><span class="deco">♡</span> カテゴリ</h2>
+      <div class="cat-grid" id="cat-grid"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span class="deco">✦</span> <span id="method-title">支払い方法</span></h2>
+      <div class="method-select" id="method-select">
+        <button class="method-btn m-credit" data-method="credit"><span class="m-dot"></span>クレカ</button>
+        <button class="method-btn m-bank" data-method="bank"><span class="m-dot"></span>銀行</button>
+        <button class="method-btn m-cash" data-method="cash"><span class="m-dot"></span>現金</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label class="card-title" for="memo-input"><span class="deco">✧</span> メモ <small>（任意）</small></label>
+      <input id="memo-input" class="text-input" type="text" maxlength="40" placeholder="例：友だちとランチ">
+    </section>
+
+    <div class="bottom-space"></div>
+    <div class="bottom-bar">
+      <button class="big-btn sparkle-btn" id="btn-save">✦ キラッと記録する ✦</button>
+    </div>
+  </main>
+
+  <!-- ===================== シート（予算設定・よく使う編集） ===================== -->
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <h2 class="sheet-title" id="sheet-title"></h2>
+      <div id="sheet-body"></div>
+      <div class="sheet-actions" id="sheet-actions"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
