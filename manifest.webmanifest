@@ -1,0 +1,12 @@
+{
+  "name": "ゆめかわ家計簿",
+  "short_name": "ゆめかわ家計簿",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff9fc",
+  "theme_color": "#fbe7f1",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

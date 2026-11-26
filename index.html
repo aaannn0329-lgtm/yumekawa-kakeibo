@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ゆめかわ家計簿</title>
+<meta name="theme-color" content="#fbe7f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ゆめかわ家計簿">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pink:#f7a8c8; --pink-d:#d9628f; --pink-l:#fde8f1;
+  --blue:#9fd3f2; --blue-d:#3f8fc4; --blue-l:#e6f4fd;
+  --lav:#c9b8f0; --lav-l:#f2ecff;
+  --ink:#5a4a63; --ink-m:#8f7f99; --line:#f1d3e2;
+  --bg:#fff9fc; --card:#ffffff; --bad:#e2577a; --ok:#4fb38a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom));
+  background-image:radial-gradient(circle at 10% 8%,#fde3ef 0 60px,transparent 61px),radial-gradient(circle at 92% 18%,#e3f2fd 0 48px,transparent 49px),radial-gradient(circle at 85% 70%,#f0e8ff 0 70px,transparent 71px);
+  background-attachment:fixed}
+header{padding:calc(14px + env(safe-area-inset-top)) 18px 6px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:19px;margin:0;font-weight:700;color:var(--pink-d);letter-spacing:.04em}
+header h1 span{color:var(--blue-d)}
+.month{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-m)}
+.month button{border:none;background:var(--pink-l);color:var(--pink-d);width:30px;height:30px;border-radius:50%;font-size:15px;font-family:inherit}
+main{max-width:520px;margin:0 auto;padding:0 14px}
+.card{background:var(--card);border-radius:22px;padding:16px;margin:12px 0;border:2px dotted var(--line);box-shadow:0 4px 14px rgba(217,98,143,.08)}
+.card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.hero{display:flex;align-items:center;gap:12px}
+.hero img{width:118px;height:118px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 0 0 3px var(--blue),0 6px 16px rgba(63,143,196,.18);flex:none}
+.bubble{position:relative;background:var(--blue-l);border-radius:18px;padding:12px 14px;font-size:14px;line-height:1.6}
+.bubble:before{content:"";position:absolute;left:-8px;top:24px;border:8px solid transparent;border-right-color:var(--blue-l);border-left:0}
+.big{font-size:28px;font-weight:700;letter-spacing:.02em}
+.sub{font-size:12px;color:var(--ink-m)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.meter{height:16px;border-radius:99px;background:#f6eef3;overflow:hidden;margin:10px 0 6px;position:relative}
+.meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--lav));transition:width .4s}
+.meter i.warn{background:linear-gradient(90deg,#ffc2a8,#f7a8c8)}
+.meter i.over{background:var(--bad)}
+.meter b{position:absolute;top:0;bottom:0;width:2px;background:var(--ink-m);opacity:.45}
+.pace{font-size:12px;color:var(--ink-m)}
+.pace.bad{color:var(--bad);font-weight:700}
+.pace.good{color:var(--ok);font-weight:700}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+button.main{flex:1;border:none;border-radius:16px;padding:12px 10px;font-family:inherit;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--pink),var(--lav));min-height:46px}
+button.main.blue{background:linear-gradient(135deg,var(--blue),var(--lav))}
+button.ghost{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 12px;font-family:inherit;font-size:13px;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--lav-l);color:#6b56a8}
+.list{list-style:none;padding:0;margin:0}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px dashed var(--line);font-size:14px}
+.list li:last-child{border-bottom:none}
+.tag{font-size:11px;padding:3px 8px;border-radius:99px;flex:none}
+.tag.withdraw{background:var(--blue-l);color:var(--blue-d)}
+.tag.cash{background:#fff3e6;color:#b8741a}
+.tag.clothes{background:var(--pink-l);color:var(--pink-d)}
+.list .amt{margin-left:auto;font-weight:700;white-space:nowrap}
+.list .del{border:none;background:none;color:var(--ink-m);font-size:16px;padding:4px}
+.empty{color:var(--ink-m);font-size:13px;text-align:center;padding:14px 0}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);border-top:2px dotted var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);z-index:5}
+nav button{border:none;background:none;font-family:inherit;font-size:11px;color:var(--ink-m);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
+nav button .ic{font-size:21px;line-height:1}
+nav button.on{color:var(--pink-d);font-weight:700}
+section{display:none}
+section.on{display:block}
+dialog{border:none;border-radius:24px;padding:0;width:min(92vw,420px);color:var(--ink);font-family:inherit}
+dialog::backdrop{background:rgba(90,74,99,.35)}
+.dlg{padding:18px}
+.dlg h3{margin:0 0 12px;font-size:16px;color:var(--pink-d)}
+label{display:block;font-size:12px;color:var(--ink-m);margin:10px 0 4px}
+input,select{width:100%;font-family:inherit;font-size:16px;padding:11px 12px;border-radius:14px;border:2px solid var(--line);background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:none;border-color:var(--pink)}
+.err{color:var(--bad);font-size:12px;min-height:16px;margin-top:4px}
+.catpick{display:flex;flex-wrap:wrap;gap:6px}
+.catpick button{border:2px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font-family:inherit;font-size:13px;color:var(--ink)}
+.catpick button.on{border-color:var(--pink);background:var(--pink-l);color:var(--pink-d);font-weight:700}
+.chartbox{position:relative;height:260px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--ink-m);margin-bottom:8px}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mini{background:var(--bg);border-radius:14px;padding:10px}
+.mini .v{font-size:18px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:7px 4px;border-bottom:1px dashed var(--line);text-align:right}
+td:first-child,th:first-child{text-align:left}
+th{font-size:11px;color:var(--ink-m);font-weight:500}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9}
+.toast.on{opacity:.92}
+</style>
+</head>
+<body>
+<header>
+  <h1>ゆめかわ<span>家計簿</span></h1>
+  <div class="month"><button id="prevM" aria-label="前の月">‹</button><span id="monthLabel"></span><button id="nextM" aria-label="次の月">›</button></div>
+</header>
+
+<main>
+<!-- ホーム -->
+<section id="tab-home" class="on">
+  <div class="card">
+    <div class="hero">
+      <img id="dog" src="assets/dog-normal.jpg" alt="マスコットのわんこ">
+      <div class="bubble" id="dogMsg">…</div>
+    </div>
+  </div>
+
+  <div class="card" id="cashCard">
+    <h2>💸 現金（月初に2万円だけ）</h2>
+    <div class="row"><div><div class="sub">今月おろした金額</div><div class="big" id="wdTotal">0円</div></div><div class="sub" style="text-align:right">予算 <span id="cashBudgetLbl"></span></div></div>
+    <div class="meter"><i id="wdBar"></i></div>
+    <div class="pace" id="wdPace"></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="mini"><div class="sub">手元にあるはず</div><div class="v" id="cashLeft">0円</div></div>
+      <div class="mini"><div class="sub">使い道メモ済み</div><div class="v" id="cashUsed">0円</div></div>
+    </div>
+    <div class="chips" id="cashChips"></div>
+    <div class="btns">
+      <button class="main blue" data-open="withdraw">🏧 おろした</button>
+      <button class="main" data-open="cash">📝 現金で使った</button>
+    </div>
+  </div>
+
+  <div class="card" id="clothesCard">
+    <h2>👗 服・買い物（月1.5万円まで）</h2>
+    <div class="row"><div><div class="sub">今月つかった金額</div><div class="big" id="clTotal">0円</div></div><div class="sub" style="text-align:right">予算 <span id="clBudgetLbl"></span></div></div>
+    <div class="meter"><i id="clBar"></i><b id="clPaceMark"></b></div>
+    <div class="pace" id="clPace"></div>
+    <div class="btns"><button class="main" data-open="clothes">🛍️ 服を買った</button></div>
+  </div>
+</section>
+
+<!-- きろく -->
+<section id="tab-log">
+  <div class="card">
+    <h2>📒 今月のきろく</h2>
+    <ul class="list" id="logList"></ul>
+  </div>
+</section>
+
+<!-- 家族 -->
+<section id="tab-family">
+  <div class="card">
+    <h2>🏠 家族の生活費（イオン・JCB・PayPay）</h2>
+    <div class="legend" id="famLegend"></div>
+    <div class="chartbox"><canvas id="famChart" role="img" aria-label="月ごとの家族の生活費の積み上げ棒グラフ"></canvas></div>
+    <div class="sub" id="famAvg" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>🥧 <span id="famPieTitle">内訳</span></h2>
+    <div class="chartbox" style="height:220px"><canvas id="famPie" role="img" aria-label="選んだ月の生活費の内訳"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>✏️ 月の生活費を入力</h2>
+    <div class="sub">カードの請求が確定したら、分類ごとの金額を入れてね。</div>
+    <div class="btns"><button class="main blue" id="famAdd">＋ この月を入力・修正</button></div>
+    <table style="margin-top:10px"><thead><tr><th>月</th><th>合計</th><th>食費</th><th>固定費</th></tr></thead><tbody id="famTable"></tbody></table>
+  </div>
+</section>
+
+<!-- せってい -->
+<section id="tab-set">
+  <div class="card">
+    <h2>🎀 予算</h2>
+    <label for="setCash">現金（月に引き出していい額）</label>
+    <input id="setCash" type="number" inputmode="numeric" min="0" step="1000">
+    <label for="setClothes">服・買い物（月の上限）</label>
+    <input id="setClothes" type="number" inputmode="numeric" min="0" step="1000">
+    <div class="err" id="setErr"></div>
+    <div class="btns"><button class="main" id="saveSet">保存する</button></div>
+  </div>
+  <div class="card">
+    <h2>💾 バックアップ</h2>
+    <div class="sub">データはこのスマホのブラウザだけに保存されます。ときどき書き出しておくと安心だよ。家族データのファイルもここから読み込めます。</div>
+    <div class="btns">
+      <button class="ghost" id="exportBtn">書き出す</button>
+      <button class="ghost" id="importBtn">読み込む</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button data-tab="home" class="on"><span class="ic">🐶</span>ホーム</button>
+  <button data-tab="log"><span class="ic">📒</span>きろく</button>
+  <button data-tab="family"><span class="ic">🏠</span>家族</button>
+  <button data-tab="set"><span class="ic">🎀</span>せってい</button>
+</nav>
+
+<dialog id="entryDlg"><form class="dlg" method="dialog" id="entryForm" novalidate>
+  <h3 id="entryTitle"></h3>
+  <label for="eDate">日付</label><input id="eDate" type="date">
+  <label for="eAmt">金額（円）</label><input id="eAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="例：3000">
+  <div id="catWrap"><label>なにに使った？</label><div class="catpick" id="catPick"></div></div>
+  <label for="eMemo">メモ（なくてもOK）</label><input id="eMemo" type="text" maxlength="40" placeholder="例：ランチ、SHEIN">
+  <div class="err" id="eErr"></div>
+  <div class="btns"><button class="ghost" value="cancel" type="button" id="eCancel">やめる</button><button class="main" type="submit">きろくする</button></div>
+</form></dialog>
+
+<dialog id="famDlg"><form class="dlg" method="dialog" id="famForm" novalidate>
+  <h3>家族の生活費を入力</h3>
+  <label for="fMonth">支払月</label><input id="fMonth" type="month">
+  <div id="famFields"></div>
+  <div class="err" id="fErr"></div>
+  <div class="btns"><button class="ghost" type="button" id="fCancel">やめる</button><button class="main blue" type="submit">保存する</button></div>
+</form></dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(() => {
+const KEY = 'yumekawa-kakeibo-v1';
+const CASH_CATS = ['ランチ・カフェ','コンビニ','飲み会','美容院','交通','推し活','その他'];
+const FAM_CATS = ['固定費','食費','光熱費','通信費','日用品','その他'];
+const FAM_COLORS = ['#c9b8f0','#f7a8c8','#ffd59e','#9fd3f2','#a8e6cf','#d9cfc7'];
+const yen = (n) => Math.round(n).toLocaleString('ja-JP') + '円';
+const pad = (n) => String(n).padStart(2, '0');
+const ymOf = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1);
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.settings && Array.isArray(s.entries)) { s.family = s.family || {}; return s; }
+  } catch (e) {}
+  return { settings: { cashBudget: 20000, clothesBudget: 15000 }, entries: [], family: {} };
+}
+let state = load();
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { toast('保存できませんでした。バックアップを書き出してね'); }
+}
+
+let curYM = ymOf(new Date());
+const monthEntries = (ym) => state.entries.filter((e) => e.date.slice(0, 7) === ym);
+const sum = (arr) => arr.reduce((a, e) => a + e.amount, 0);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+function monthProgress(ym) {
+  const now = new Date();
+  const [y, m] = ym.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  if (ym < ymOf(now)) return { ratio: 1, left: 0, days };
+  if (ym > ymOf(now)) return { ratio: 0, left: days, days };
+  const d = now.getDate();
+  return { ratio: d / days, left: days - d + 1, days };
+}
+
+function setBar(el, val, budget) {
+  const r = budget > 0 ? val / budget : 0;
+  el.style.width = Math.min(100, r * 100) + '%';
+  el.className = r > 1 ? 'over' : r > 0.8 ? 'warn' : '';
+  return r;
+}
+
+function renderHome() {
+  const es = monthEntries(curYM);
+  const { cashBudget, clothesBudget } = state.settings;
+  const wd = sum(es.filter((e) => e.type === 'withdraw'));
+  const used = es.filter((e) => e.type === 'cash');
+  const usedSum = sum(used);
+  const cl = sum(es.filter((e) => e.type === 'clothes'));
+  const prog = monthProgress(curYM);
+
+  document.getElementById('cashBudgetLbl').textContent = yen(cashBudget);
+  document.getElementById('clBudgetLbl').textContent = yen(clothesBudget);
+  document.getElementById('wdTotal').textContent = yen(wd);
+  document.getElementById('cashLeft').textContent = yen(Math.max(0, wd - usedSum));
+  document.getElementById('cashUsed').textContent = yen(usedSum);
+  const wr = setBar(document.getElementById('wdBar'), wd, cashBudget);
+  const wp = document.getElementById('wdPace');
+  if (wd === 0) { wp.textContent = '今月はまだおろしてないよ。月初に' + yen(cashBudget) + 'だけおろそう'; wp.className = 'pace'; }
+  else if (wr > 1) { wp.textContent = '予算を ' + yen(wd - cashBudget) + ' オーバー…貯金口座からはおろさないでね'; wp.className = 'pace bad'; }
+  else if (wr === 1) { wp.textContent = '今月の分はおろし終わったよ。あとは手元の現金でやりくり！'; wp.className = 'pace good'; }
+  else { wp.textContent = 'あと ' + yen(cashBudget - wd) + ' までおろせるよ'; wp.className = 'pace'; }
+
+  const byCat = {};
+  used.forEach((e) => { byCat[e.cat] = (byCat[e.cat] || 0) + e.amount; });
+  const chips = document.getElementById('cashChips');
+  chips.replaceChildren(...Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => {
+    const s = document.createElement('span'); s.className = 'chip'; s.textContent = c + ' ' + yen(v); return s;
+  }));
+
+  document.getElementById('clTotal').textContent = yen(cl);
+  const cr = setBar(document.getElementById('clBar'), cl, clothesBudget);
+  document.getElementById('clPaceMark').style.left = Math.min(100, prog.ratio * 100) + '%';
+  const cp = document.getElementById('clPace');
+  const leftCl = clothesBudget - cl;
+  if (cr > 1) { cp.textContent = yen(-leftCl) + ' オーバー。今月はもうガマン！来月にまわそう'; cp.className = 'pace bad'; }
+  else if (prog.left > 0) {
+    cp.textContent = 'あと ' + yen(leftCl) + '（残り' + prog.left + '日）' + (cr > prog.ratio + 0.15 ? '…ちょっとペース早め' : '');
+    cp.className = cr > prog.ratio + 0.15 ? 'pace bad' : 'pace good';
+  } else { cp.textContent = leftCl >= 0 ? '予算内で終われたね！えらい！' : ''; cp.className = 'pace good'; }
+
+  let mood = 'normal', msg;
+  if (wr > 1 || cr > 1) { mood = 'sad'; msg = wr > 1 ? '現金をおろしすぎちゃった…<br>今月はもうATMに行かないでね🥺' : '服の予算をこえちゃった…<br>今月はウィンドウショッピングだけにしよ🥺'; }
+  else if (wd === 0 && prog.ratio < 1) { msg = '今月の現金は<b>' + yen(cashBudget) + '</b>だけおろそうね。<br>使ったら📝でメモしてね🐾'; }
+  else if (cr <= prog.ratio && wr <= 1 && (usedSum >= wd * 0.5 || wd === 0)) { mood = 'happy'; msg = 'いい感じ！予算ペースを守れてるよ💙<br>この調子でいこ〜！'; }
+  else if (wd > 0 && usedSum < wd * 0.5) { msg = 'おろした現金の使い道、<br>まだメモしてない分があるかも？📝'; }
+  else { msg = 'ちょっとペースが早いかも。<br>チケットの月は服をおやすみしよ🎀'; }
+  const dog = document.getElementById('dog');
+  dog.src = 'assets/dog-' + mood + '.jpg';
+  document.getElementById('dogMsg').innerHTML = msg;
+}
+
+const TYPE_LABEL = { withdraw: '🏧 おろした', cash: '📝 現金', clothes: '🛍️ 服' };
+function renderLog() {
+  const ul = document.getElementById('logList');
+  const es = monthEntries(curYM).sort((a, b) => b.date.localeCompare(a.date));
+  if (!es.length) { ul.innerHTML = '<li class="empty">まだきろくがないよ。ホームのボタンから入れてね🐶</li>'; return; }
+  ul.replaceChildren(...es.map((e) => {
+    const li = document.createElement('li');
+    const tag = document.createElement('span'); tag.className = 'tag ' + e.type; tag.textContent = TYPE_LABEL[e.type];
+    const txt = document.createElement('div');
+    const d = document.createElement('div'); d.className = 'sub'; d.textContent = e.date.slice(5).replace('-', '/');
+    const m = document.createElement('div'); m.textContent = [e.cat, e.memo].filter(Boolean).join('・') || '—';
+    txt.append(d, m);
+    const amt = document.createElement('span'); amt.className = 'amt'; amt.textContent = yen(e.amount);
+    const del = document.createElement('button'); del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', '削除');
+    let armed = false;
+    del.onclick = () => {
+      if (!armed) { armed = true; del.textContent = '消す？'; del.style.color = 'var(--bad)'; setTimeout(() => { armed = false; del.textContent = '✕'; del.style.color = ''; }, 2500); return; }
+      state.entries = state.entries.filter((x) => x.id !== e.id); save(); renderAll(); toast('消しました');
+    };
+    li.append(tag, txt, amt, del);
+    return li;
+  }));
+}
+
+let famChart, famPie, pieMonth;
+function famMonths() { return Object.keys(state.family).sort(); }
+function famTotal(r) { return FAM_CATS.reduce((a, c) => a + (+r[c] || 0), 0); }
+function renderFamily() {
+  const months = famMonths();
+  const lg = document.getElementById('famLegend');
+  lg.innerHTML = FAM_CATS.map((c, i) => '<span><i style="background:' + FAM_COLORS[i] + '"></i>' + c + '</span>').join('');
+  const tb = document.getElementById('famTable');
+  if (!months.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty">まだデータがないよ。せってい→読み込むで家族データのファイルを入れるか、ここから入力してね</td></tr>';
+    document.getElementById('famAvg').textContent = '';
+  } else {
+    tb.replaceChildren(...months.slice().reverse().map((m) => {
+      const r = state.family[m]; const tr = document.createElement('tr');
+      [m.replace('-', '年') + '月', yen(famTotal(r)), yen(+r['食費'] || 0), yen(+r['固定費'] || 0)].forEach((t) => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
+      tr.style.cursor = 'pointer'; tr.onclick = () => { pieMonth = m; drawPie(); };
+      return tr;
+    }));
+    const avg = months.reduce((a, m) => a + famTotal(state.family[m]), 0) / months.length;
+    const food = months.reduce((a, m) => a + (+state.family[m]['食費'] || 0), 0) / months.length;
+    document.getElementById('famAvg').textContent = months.length + 'か月の平均：' + yen(avg) + '（食費 ' + yen(food) + '）';
+  }
+  if (typeof Chart === 'undefined') return;
+  const data = { labels: months.map((m) => +m.slice(5) + '月'), datasets: FAM_CATS.map((c, i) => ({ label: c, data: months.map((m) => +state.family[m][c] || 0), backgroundColor: FAM_COLORS[i], borderColor: '#fff', borderWidth: 1, borderRadius: 4, maxBarThickness: 24 })) };
+  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.dataset.label + ' ' + yen(c.raw), footer: (items) => '合計 ' + yen(items.reduce((a, i) => a + i.raw, 0)) } } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#8f7f99', autoSkip: false } }, y: { stacked: true, ticks: { color: '#8f7f99', callback: (v) => v / 10000 + '万' }, grid: { color: '#f6eef3' } } }, interaction: { mode: 'index', intersect: false }, onClick: (ev, els) => { if (els.length) { pieMonth = months[els[0].index]; drawPie(); } } };
+  if (famChart) { famChart.data = data; famChart.update(); }
+  else famChart = new Chart(document.getElementById('famChart'), { type: 'bar', data, options: opts });
+  if (!pieMonth || !state.family[pieMonth]) pieMonth = months[months.length - 1];
+  drawPie();
+}
+function drawPie() {
+  if (typeof Chart === 'undefined') return;
+  const r = pieMonth && state.family[pieMonth];
+  document.getElementById('famPieTitle').textContent = r ? pieMonth.replace('-', '年') + '月の内訳（' + yen(famTotal(r)) + '）' : '内訳';
+  const vals = r ? FAM_CATS.map((c) => +r[c] || 0) : [];
+  const data = { labels: FAM_CATS, datasets: [{ data: vals, backgroundColor: FAM_COLORS, borderColor: '#fff', borderWidth: 2 }] };
+  if (famPie) { famPie.data = data; famPie.update(); }
+  else famPie = new Chart(document.getElementById('famPie'), { type: 'doughnut', data, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { color: '#5a4a63', boxWidth: 10, font: { family: 'Zen Maru Gothic' } } }, tooltip: { callbacks: { label: (c) => { const t = c.dataset.data.reduce((a, b) => a + b, 0) || 1; return c.label + ' ' + yen(c.raw) + '（' + Math.round(c.raw / t * 100) + '%）'; } } } } } });
+}
+
+function renderAll() {
+  document.getElementById('monthLabel').textContent = curYM.replace('-', '年') + '月';
+  renderHome(); renderLog(); renderFamily();
+}
+
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab));
+  if (b.dataset.tab === 'family') { famChart && famChart.resize(); famPie && famPie.resize(); }
+  if (b.dataset.tab === 'set') { document.getElementById('setCash').value = state.settings.cashBudget; document.getElementById('setClothes').value = state.settings.clothesBudget; }
+  window.scrollTo(0, 0);
+});
+function shiftMonth(d) { const [y, m] = curYM.split('-').map(Number); curYM = ymOf(new Date(y, m - 1 + d, 1)); renderAll(); }
+document.getElementById('prevM').onclick = () => shiftMonth(-1);
+document.getElementById('nextM').onclick = () => shiftMonth(1);
+
+const dlg = document.getElementById('entryDlg');
+let entryType = 'cash', pickedCat = null;
+const TITLES = { withdraw: '🏧 ATMでおろした', cash: '📝 現金で使った', clothes: '🛍️ 服・買い物をした' };
+document.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => openEntry(b.dataset.open));
+function openEntry(type) {
+  entryType = type; pickedCat = null;
+  document.getElementById('entryTitle').textContent = TITLES[type];
+  const defDate = curYM === ymOf(new Date()) ? todayStr() : curYM + '-01';
+  document.getElementById('eDate').value = defDate;
+  document.getElementById('eAmt').value = type === 'withdraw' ? Math.max(0, state.settings.cashBudget - sum(monthEntries(curYM).filter((e) => e.type === 'withdraw'))) || '' : '';
+  document.getElementById('eMemo').value = '';
+  document.getElementById('eErr').textContent = '';
+  const wrap = document.getElementById('catWrap');
+  wrap.hidden = type !== 'cash';
+  const cp = document.getElementById('catPick');
+  cp.replaceChildren(...CASH_CATS.map((c) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = c; b.onclick = () => { pickedCat = c; cp.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('eErr').textContent = ''; }; return b; }));
+  dlg.showModal();
+  setTimeout(() => document.getElementById('eAmt').focus(), 50);
+}
+document.getElementById('eCancel').onclick = () => dlg.close();
+['eAmt', 'eDate'].forEach((id) => document.getElementById(id).addEventListener('input', () => { document.getElementById('eErr').textContent = ''; }));
+document.getElementById('entryForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const amt = Math.round(Number(document.getElementById('eAmt').value));
+  const date = document.getElementById('eDate').value;
+  const err = document.getElementById('eErr');
+  if (!date) { err.textContent = '日付を入れてね'; return; }
+  if (!amt || amt <= 0) { err.textContent = '金額を入れてね'; return; }
+  if (entryType === 'cash' && !pickedCat) { err.textContent = 'なにに使ったか選んでね'; return; }
+  const before = { wd: sum(monthEntries(date.slice(0, 7)).filter((e) => e.type === 'withdraw')), cl: sum(monthEntries(date.slice(0, 7)).filter((e) => e.type === 'clothes')) };
+  state.entries.push({ id: uid(), type: entryType, date, amount: amt, cat: entryType === 'cash' ? pickedCat : '', memo: document.getElementById('eMemo').value.trim() });
+  save(); dlg.close(); curYM = date.slice(0, 7); renderAll();
+  if (entryType === 'withdraw' && before.wd + amt > state.settings.cashBudget) toast('予算オーバーだよ…🥺');
+  else if (entryType === 'clothes' && before.cl + amt > state.settings.clothesBudget) toast('服の予算をこえちゃった…🥺');
+  else toast('きろくしたよ🐾');
+});
+
+const fdlg = document.getElementById('famDlg');
+document.getElementById('famFields').innerHTML = FAM_CATS.map((c, i) => '<label for="ff' + i + '">' + c + '</label><input id="ff' + i + '" type="number" inputmode="numeric" min="0" step="1">').join('');
+function fillFam() { const r = state.family[document.getElementById('fMonth').value] || {}; FAM_CATS.forEach((c, i) => { document.getElementById('ff' + i).value = r[c] ?? ''; }); }
+document.getElementById('fMonth').addEventListener('change', () => { fillFam(); document.getElementById('fErr').textContent = ''; });
+document.getElementById('famAdd').onclick = () => { document.getElementById('fMonth').value = curYM; fillFam(); document.getElementById('fErr').textContent = ''; fdlg.showModal(); };
+document.getElementById('fCancel').onclick = () => fdlg.close();
+document.getElementById('famForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const m = document.getElementById('fMonth').value;
+  const err = document.getElementById('fErr');
+  if (!m) { err.textContent = '支払月を選んでね'; return; }
+  const r = {}; let any = false;
+  for (let i = 0; i < FAM_CATS.length; i++) {
+    const v = document.getElementById('ff' + i).value;
+    if (v !== '' && (isNaN(+v) || +v < 0)) { err.textContent = FAM_CATS[i] + 'は0以上の数字で入れてね'; return; }
+    r[FAM_CATS[i]] = v === '' ? 0 : Math.round(+v); if (v !== '') any = true;
+  }
+  if (!any) { err.textContent = 'どれか1つは金額を入れてね'; return; }
+  state.family[m] = r; pieMonth = m; save(); fdlg.close(); renderFamily(); toast('保存したよ🏠');
+});
+
+document.getElementById('saveSet').onclick = () => {
+  const c = Math.round(+document.getElementById('setCash').value), k = Math.round(+document.getElementById('setClothes').value);
+  const err = document.getElementById('setErr');
+  if (!(c > 0) || !(k > 0)) { err.textContent = 'どちらも1円以上で入れてね'; return; }
+  err.textContent = ''; state.settings.cashBudget = c; state.settings.clothesBudget = k; save(); renderAll(); toast('予算を保存したよ🎀');
+};
+['setCash', 'setClothes'].forEach((id) => document.getElementById(id).addEventListener('input', () => { document.getElementById('setErr').textContent = ''; }));
+
+document.getElementById('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'yumekawa-kakeibo-' + todayStr() + '.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById('importBtn').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').addEventListener('change', async (ev) => {
+  const f = ev.target.files[0]; ev.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    let n = 0;
+    if (d.family && typeof d.family === 'object') {
+      Object.entries(d.family).forEach(([m, r]) => { if (/^\d{4}-\d{2}$/.test(m) && r && typeof r === 'object') { const o = {}; FAM_CATS.forEach((c) => { o[c] = Math.max(0, Math.round(+r[c] || 0)); }); state.family[m] = o; n++; } });
+    }
+    let k = 0;
+    if (Array.isArray(d.entries)) {
+      const ids = new Set(state.entries.map((e) => e.id));
+      d.entries.forEach((e) => { if (e && ['withdraw', 'cash', 'clothes'].includes(e.type) && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && +e.amount > 0 && !ids.has(e.id)) { state.entries.push({ id: e.id || uid(), type: e.type, date: e.date, amount: Math.round(+e.amount), cat: String(e.cat || ''), memo: String(e.memo || '').slice(0, 40) }); k++; } });
+    }
+    if (d.settings && +d.settings.cashBudget > 0 && +d.settings.clothesBudget > 0) state.settings = { cashBudget: +d.settings.cashBudget, clothesBudget: +d.settings.clothesBudget };
+    if (!n && !k && !d.settings) throw new Error('empty');
+    save(); renderAll(); toast('読み込んだよ（家族 ' + n + 'か月・きろく ' + k + '件）');
+  } catch (e) { toast('このファイルは読み込めなかったよ'); }
+});
+
+renderAll();
+if (typeof Chart === 'undefined') window.addEventListener('load', renderFamily);
+})();
+</script>
+</body>
+</html>
