@@ -1,6 +1,6 @@
 {
-  "name": "ゆめかわ家計簿",
-  "short_name": "ゆめかわ家計簿",
+  "name": "家計簿",
+  "short_name": "家計簿",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#fff9fc",
