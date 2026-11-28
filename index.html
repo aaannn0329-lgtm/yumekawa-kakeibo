@@ -63,6 +63,8 @@ button.ghost{border:2px solid var(--line);background:#fff;border-radius:14px;pad
 .tag.carry{background:#eafaf2;color:#2f8a64}
 .list .amt{margin-left:auto;font-weight:700;white-space:nowrap}
 .list .del{border:none;background:none;color:var(--ink-m);font-size:16px;padding:4px}
+.list .mv{border:2px solid var(--line);background:#fff;border-radius:10px;color:var(--ink-m);font-size:13px;width:34px;height:34px;padding:0}
+.list .mv:disabled{opacity:.35}
 .empty{color:var(--ink-m);font-size:13px;text-align:center;padding:14px 0}
 nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);border-top:2px dotted var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);z-index:5}
 nav button{border:none;background:none;font-family:inherit;font-size:11px;color:var(--ink-m);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
@@ -178,6 +180,14 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
     <div class="btns"><button class="main" id="saveSet">保存する</button></div>
   </div>
   <div class="card">
+    <h2>📝 現金の使い道の項目</h2>
+    <div class="sub">「現金で使った」で選ぶ項目を、自由に追加・並べ替え・削除できるよ。「わからない」は財布チェックで使うので、いつも最後にあります。</div>
+    <ul class="list" id="catList" style="margin-top:8px"></ul>
+    <label for="newCat">新しい項目</label>
+    <div style="display:flex;gap:8px"><input id="newCat" type="text" maxlength="12" placeholder="例：ドラッグストア"><button class="main" id="addCat" style="flex:none;padding:0 18px">追加</button></div>
+    <div class="err" id="catErr"></div>
+  </div>
+  <div class="card">
     <h2>💾 バックアップ</h2>
     <div class="sub">データはこのスマホのブラウザだけに保存されます。ときどき書き出しておくと安心だよ。家族データのファイルもここから読み込めます。</div>
     <div class="btns">
@@ -229,7 +239,8 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
 <script>
 (() => {
 const KEY = 'yumekawa-kakeibo-v1';
-const CASH_CATS = ['ランチ・カフェ','コンビニ','飲み会','美容院','交通','推し活','その他','わからない'];
+const DEFAULT_CATS = ['ランチ・カフェ','コンビニ','飲み会','美容院','交通','推し活','その他'];
+const FIXED_CAT = 'わからない';
 const FAM_CATS = ['固定費','食費','光熱費','通信費','日用品','その他'];
 const FAM_COLORS = ['#c9b8f0','#f7a8c8','#ffd59e','#9fd3f2','#a8e6cf','#d9cfc7'];
 const yen = (n) => Math.round(n).toLocaleString('ja-JP') + '円';
@@ -241,11 +252,12 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && s.settings && Array.isArray(s.entries)) { s.family = s.family || {}; return s; }
+    if (s && s.settings && Array.isArray(s.entries)) { s.family = s.family || {}; if (!Array.isArray(s.settings.cashCats)) s.settings.cashCats = DEFAULT_CATS.slice(); return s; }
   } catch (e) {}
-  return { settings: { cashBudget: 20000, clothesBudget: 15000 }, entries: [], family: {} };
+  return { settings: { cashBudget: 20000, clothesBudget: 15000, cashCats: DEFAULT_CATS.slice() }, entries: [], family: {} };
 }
 let state = load();
+const cashCats = () => state.settings.cashCats.filter((c) => c !== FIXED_CAT).concat(FIXED_CAT);
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); }
   catch (e) { toast('保存できませんでした。バックアップを書き出してね'); }
@@ -409,7 +421,7 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'family') { famChart && famChart.resize(); famPie && famPie.resize(); }
-  if (b.dataset.tab === 'set') { document.getElementById('setCash').value = state.settings.cashBudget; document.getElementById('setClothes').value = state.settings.clothesBudget; }
+  if (b.dataset.tab === 'set') { document.getElementById('setCash').value = state.settings.cashBudget; document.getElementById('setClothes').value = state.settings.clothesBudget; document.getElementById('catErr').textContent = ''; renderCats(); }
   window.scrollTo(0, 0);
 });
 function shiftMonth(d) { const [y, m] = curYM.split('-').map(Number); curYM = ymOf(new Date(y, m - 1 + d, 1)); renderAll(); }
@@ -431,7 +443,7 @@ function openEntry(type) {
   const wrap = document.getElementById('catWrap');
   wrap.hidden = type !== 'cash';
   const cp = document.getElementById('catPick');
-  cp.replaceChildren(...CASH_CATS.map((c) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = c; b.onclick = () => { pickedCat = c; cp.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('eErr').textContent = ''; }; return b; }));
+  cp.replaceChildren(...cashCats().map((c) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = c; b.onclick = () => { pickedCat = c; cp.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('eErr').textContent = ''; }; return b; }));
   dlg.showModal();
   setTimeout(() => document.getElementById('eAmt').focus(), 50);
 }
@@ -498,6 +510,41 @@ document.getElementById('famForm').addEventListener('submit', (ev) => {
   state.family[m] = r; pieMonth = m; save(); fdlg.close(); renderFamily(); toast('保存したよ🏠');
 });
 
+function renderCats() {
+  const ul = document.getElementById('catList');
+  const cs = state.settings.cashCats;
+  const items = cs.map((c, i) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.textContent = c; name.style.flex = '1';
+    const up = document.createElement('button'); up.className = 'mv'; up.textContent = '↑'; up.disabled = i === 0; up.setAttribute('aria-label', c + 'を上へ');
+    up.onclick = () => { [cs[i - 1], cs[i]] = [cs[i], cs[i - 1]]; save(); renderCats(); };
+    const dn = document.createElement('button'); dn.className = 'mv'; dn.textContent = '↓'; dn.disabled = i === cs.length - 1; dn.setAttribute('aria-label', c + 'を下へ');
+    dn.onclick = () => { [cs[i + 1], cs[i]] = [cs[i], cs[i + 1]]; save(); renderCats(); };
+    const del = document.createElement('button'); del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', c + 'を削除');
+    let armed = false;
+    del.onclick = () => {
+      if (cs.length <= 1) { document.getElementById('catErr').textContent = '項目は1つ以上残してね'; return; }
+      if (!armed) { armed = true; del.textContent = '消す？'; del.style.color = 'var(--bad)'; setTimeout(() => { armed = false; del.textContent = '✕'; del.style.color = ''; }, 2500); return; }
+      cs.splice(i, 1); save(); renderCats(); toast('「' + c + '」を消したよ（前のきろくはそのまま）');
+    };
+    li.append(name, up, dn, del); return li;
+  });
+  const fixed = document.createElement('li');
+  const fn = document.createElement('span'); fn.textContent = FIXED_CAT + '（固定）'; fn.style.cssText = 'flex:1;color:var(--ink-m)';
+  fixed.append(fn);
+  ul.replaceChildren(...items, fixed);
+}
+document.getElementById('addCat').onclick = () => {
+  const inp = document.getElementById('newCat'), err = document.getElementById('catErr');
+  const v = inp.value.trim();
+  if (!v) { err.textContent = '項目の名前を入れてね'; return; }
+  if (v === FIXED_CAT || state.settings.cashCats.includes(v)) { err.textContent = '「' + v + '」はもうあるよ'; return; }
+  if (state.settings.cashCats.length >= 20) { err.textContent = '項目は20個までだよ'; return; }
+  state.settings.cashCats.push(v); save(); inp.value = ''; err.textContent = ''; renderCats(); toast('「' + v + '」を追加したよ📝');
+};
+document.getElementById('newCat').addEventListener('input', () => { document.getElementById('catErr').textContent = ''; });
+document.getElementById('newCat').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addCat').click(); } });
+
 document.getElementById('saveSet').onclick = () => {
   const c = Math.round(+document.getElementById('setCash').value), k = Math.round(+document.getElementById('setClothes').value);
   const err = document.getElementById('setErr');
@@ -526,7 +573,10 @@ document.getElementById('importFile').addEventListener('change', async (ev) => {
       const ids = new Set(state.entries.map((e) => e.id));
       d.entries.forEach((e) => { if (e && ['withdraw', 'cash', 'clothes', 'carry'].includes(e.type) && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && +e.amount > 0 && !ids.has(e.id)) { state.entries.push({ id: e.id || uid(), type: e.type, date: e.date, amount: Math.round(+e.amount), cat: String(e.cat || ''), memo: String(e.memo || '').slice(0, 40) }); k++; } });
     }
-    if (d.settings && +d.settings.cashBudget > 0 && +d.settings.clothesBudget > 0) state.settings = { cashBudget: +d.settings.cashBudget, clothesBudget: +d.settings.clothesBudget };
+    if (d.settings && +d.settings.cashBudget > 0 && +d.settings.clothesBudget > 0) {
+      state.settings.cashBudget = +d.settings.cashBudget; state.settings.clothesBudget = +d.settings.clothesBudget;
+      if (Array.isArray(d.settings.cashCats)) { const cs = d.settings.cashCats.map((c) => String(c).trim().slice(0, 12)).filter((c) => c && c !== FIXED_CAT); if (cs.length) state.settings.cashCats = [...new Set(cs)].slice(0, 20); }
+    }
     if (!n && !k && !d.settings) throw new Error('empty');
     save(); renderAll(); toast('読み込んだよ（家族 ' + n + 'か月・きろく ' + k + '件）');
   } catch (e) { toast('このファイルは読み込めなかったよ'); }
