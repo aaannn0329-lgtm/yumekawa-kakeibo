@@ -60,6 +60,7 @@ button.ghost{border:2px solid var(--line);background:#fff;border-radius:14px;pad
 .tag.withdraw{background:var(--blue-l);color:var(--blue-d)}
 .tag.cash{background:#fff3e6;color:#b8741a}
 .tag.clothes{background:var(--pink-l);color:var(--pink-d)}
+.tag.carry{background:#eafaf2;color:#2f8a64}
 .list .amt{margin-left:auto;font-weight:700;white-space:nowrap}
 .list .del{border:none;background:none;color:var(--ink-m);font-size:16px;padding:4px}
 .empty{color:var(--ink-m);font-size:13px;text-align:center;padding:14px 0}
@@ -117,14 +118,15 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
     <div class="meter"><i id="wdBar"></i></div>
     <div class="pace" id="wdPace"></div>
     <div class="grid2" style="margin-top:10px">
-      <div class="mini"><div class="sub">手元にあるはず</div><div class="v" id="cashLeft">0円</div></div>
-      <div class="mini"><div class="sub">使い道メモ済み</div><div class="v" id="cashUsed">0円</div></div>
+      <div class="mini"><div class="sub">財布の中（計算）</div><div class="v" id="cashLeft">0円</div></div>
+      <div class="mini"><div class="sub">今月の使い道メモ</div><div class="v" id="cashUsed">0円</div></div>
     </div>
     <div class="chips" id="cashChips"></div>
     <div class="btns">
       <button class="main blue" data-open="withdraw">🏧 おろした</button>
       <button class="main" data-open="cash">📝 現金で使った</button>
     </div>
+    <div class="btns"><button class="ghost" id="walletBtn" style="flex:1">👛 財布をチェック（今ある現金を登録）</button></div>
   </div>
 
   <div class="card" id="clothesCard">
@@ -212,13 +214,22 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
   <div class="btns"><button class="ghost" type="button" id="fCancel">やめる</button><button class="main blue" type="submit">保存する</button></div>
 </form></dialog>
 
+<dialog id="walletDlg"><form class="dlg" method="dialog" id="walletForm" novalidate>
+  <h3>👛 財布をチェック</h3>
+  <div class="sub" id="walletInfo"></div>
+  <label for="wAmt">今、財布に入っている現金（円）</label><input id="wAmt" type="number" inputmode="numeric" min="0" step="1" placeholder="例：12000">
+  <label for="wDate">日付</label><input id="wDate" type="date">
+  <div class="err" id="wErr"></div>
+  <div class="btns"><button class="ghost" type="button" id="wCancel">やめる</button><button class="main" type="submit">合わせる</button></div>
+</form></dialog>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 (() => {
 const KEY = 'yumekawa-kakeibo-v1';
-const CASH_CATS = ['ランチ・カフェ','コンビニ','飲み会','美容院','交通','推し活','その他'];
+const CASH_CATS = ['ランチ・カフェ','コンビニ','飲み会','美容院','交通','推し活','その他','わからない'];
 const FAM_CATS = ['固定費','食費','光熱費','通信費','日用品','その他'];
 const FAM_COLORS = ['#c9b8f0','#f7a8c8','#ffd59e','#9fd3f2','#a8e6cf','#d9cfc7'];
 const yen = (n) => Math.round(n).toLocaleString('ja-JP') + '円';
@@ -243,6 +254,12 @@ function save() {
 let curYM = ymOf(new Date());
 const monthEntries = (ym) => state.entries.filter((e) => e.date.slice(0, 7) === ym);
 const sum = (arr) => arr.reduce((a, e) => a + e.amount, 0);
+function walletUntil(dateStr) {
+  let v = 0;
+  state.entries.forEach((e) => { if (e.date <= dateStr) { if (e.type === 'withdraw' || e.type === 'carry') v += e.amount; else if (e.type === 'cash') v -= e.amount; } });
+  return v;
+}
+function monthEnd(ym) { const [y, m] = ym.split('-').map(Number); return ym + '-' + pad(new Date(y, m, 0).getDate()); }
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -279,7 +296,8 @@ function renderHome() {
   document.getElementById('cashBudgetLbl').textContent = yen(cashBudget);
   document.getElementById('clBudgetLbl').textContent = yen(clothesBudget);
   document.getElementById('wdTotal').textContent = yen(wd);
-  document.getElementById('cashLeft').textContent = yen(Math.max(0, wd - usedSum));
+  const hand = walletUntil(curYM === ymOf(new Date()) ? todayStr() : monthEnd(curYM));
+  const cl0 = document.getElementById('cashLeft'); cl0.textContent = yen(hand); cl0.style.color = hand < 0 ? 'var(--bad)' : '';
   document.getElementById('cashUsed').textContent = yen(usedSum);
   const wr = setBar(document.getElementById('wdBar'), wd, cashBudget);
   const wp = document.getElementById('wdPace');
@@ -308,16 +326,17 @@ function renderHome() {
 
   let mood = 'normal', msg;
   if (wr > 1 || cr > 1) { mood = 'sad'; msg = wr > 1 ? '現金をおろしすぎちゃった…<br>今月はもうATMに行かないでね🥺' : '服の予算をこえちゃった…<br>今月はウィンドウショッピングだけにしよ🥺'; }
+  else if (!state.entries.some((e) => e.type === 'carry' || e.type === 'withdraw')) { msg = 'はじめまして🐾<br>まずは👛<b>財布をチェック</b>で、今ある現金を登録してね！'; }
   else if (wd === 0 && prog.ratio < 1) { msg = '今月の現金は<b>' + yen(cashBudget) + '</b>だけおろそうね。<br>使ったら📝でメモしてね🐾'; }
   else if (cr <= prog.ratio && wr <= 1 && (usedSum >= wd * 0.5 || wd === 0)) { mood = 'happy'; msg = 'いい感じ！予算ペースを守れてるよ💙<br>この調子でいこ〜！'; }
-  else if (wd > 0 && usedSum < wd * 0.5) { msg = 'おろした現金の使い道、<br>まだメモしてない分があるかも？📝'; }
+  else if (wd > 0 && usedSum < wd * 0.5) { msg = 'ときどき👛<b>財布をチェック</b>して、<br>計算とズレてないか見てみよ📝'; }
   else { msg = 'ちょっとペースが早いかも。<br>チケットの月は服をおやすみしよ🎀'; }
   const dog = document.getElementById('dog');
   dog.src = 'assets/dog-' + mood + '.jpg';
   document.getElementById('dogMsg').innerHTML = msg;
 }
 
-const TYPE_LABEL = { withdraw: '🏧 おろした', cash: '📝 現金', clothes: '🛍️ 服' };
+const TYPE_LABEL = { withdraw: '🏧 おろした', cash: '📝 現金', clothes: '🛍️ 服', carry: '👛 手持ち' };
 function renderLog() {
   const ul = document.getElementById('logList');
   const es = monthEntries(curYM).sort((a, b) => b.date.localeCompare(a.date));
@@ -434,6 +453,30 @@ document.getElementById('entryForm').addEventListener('submit', (ev) => {
   else toast('きろくしたよ🐾');
 });
 
+const wdlg = document.getElementById('walletDlg');
+document.getElementById('walletBtn').onclick = () => {
+  const d = curYM === ymOf(new Date()) ? todayStr() : monthEnd(curYM);
+  document.getElementById('wDate').value = d;
+  document.getElementById('wAmt').value = '';
+  document.getElementById('wErr').textContent = '';
+  document.getElementById('walletInfo').textContent = 'アプリの計算では ' + yen(walletUntil(d)) + ' 入っているはず。実際の金額を入れると、差を自動で記録して合わせるよ。';
+  wdlg.showModal(); setTimeout(() => document.getElementById('wAmt').focus(), 50);
+};
+document.getElementById('wCancel').onclick = () => wdlg.close();
+document.getElementById('wDate').addEventListener('change', () => { const d = document.getElementById('wDate').value; if (d) document.getElementById('walletInfo').textContent = 'アプリの計算では ' + yen(walletUntil(d)) + ' 入っているはず。実際の金額を入れると、差を自動で記録して合わせるよ。'; });
+document.getElementById('wAmt').addEventListener('input', () => { document.getElementById('wErr').textContent = ''; });
+document.getElementById('walletForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const v = document.getElementById('wAmt').value, date = document.getElementById('wDate').value, err = document.getElementById('wErr');
+  if (!date) { err.textContent = '日付を入れてね'; return; }
+  if (v === '' || isNaN(+v) || +v < 0) { err.textContent = '財布の中の金額を入れてね（0円でもOK）'; return; }
+  const diff = Math.round(+v) - walletUntil(date);
+  if (diff > 0) state.entries.push({ id: uid(), type: 'carry', date, amount: diff, cat: '', memo: '財布チェックで追加' });
+  else if (diff < 0) state.entries.push({ id: uid(), type: 'cash', date, amount: -diff, cat: 'わからない', memo: '財布チェックの差' });
+  save(); wdlg.close(); curYM = date.slice(0, 7); renderAll();
+  toast(diff === 0 ? 'ぴったり！えらい🐾' : diff > 0 ? yen(diff) + 'を手持ちに追加したよ👛' : yen(-diff) + 'は使い道わからない分として記録したよ');
+});
+
 const fdlg = document.getElementById('famDlg');
 document.getElementById('famFields').innerHTML = FAM_CATS.map((c, i) => '<label for="ff' + i + '">' + c + '</label><input id="ff' + i + '" type="number" inputmode="numeric" min="0" step="1">').join('');
 function fillFam() { const r = state.family[document.getElementById('fMonth').value] || {}; FAM_CATS.forEach((c, i) => { document.getElementById('ff' + i).value = r[c] ?? ''; }); }
@@ -481,7 +524,7 @@ document.getElementById('importFile').addEventListener('change', async (ev) => {
     let k = 0;
     if (Array.isArray(d.entries)) {
       const ids = new Set(state.entries.map((e) => e.id));
-      d.entries.forEach((e) => { if (e && ['withdraw', 'cash', 'clothes'].includes(e.type) && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && +e.amount > 0 && !ids.has(e.id)) { state.entries.push({ id: e.id || uid(), type: e.type, date: e.date, amount: Math.round(+e.amount), cat: String(e.cat || ''), memo: String(e.memo || '').slice(0, 40) }); k++; } });
+      d.entries.forEach((e) => { if (e && ['withdraw', 'cash', 'clothes', 'carry'].includes(e.type) && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && +e.amount > 0 && !ids.has(e.id)) { state.entries.push({ id: e.id || uid(), type: e.type, date: e.date, amount: Math.round(+e.amount), cat: String(e.cat || ''), memo: String(e.memo || '').slice(0, 40) }); k++; } });
     }
     if (d.settings && +d.settings.cashBudget > 0 && +d.settings.clothesBudget > 0) state.settings = { cashBudget: +d.settings.cashBudget, clothesBudget: +d.settings.clothesBudget };
     if (!n && !k && !d.settings) throw new Error('empty');
