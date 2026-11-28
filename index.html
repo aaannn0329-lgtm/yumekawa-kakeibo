@@ -67,7 +67,7 @@ button.ghost{border:2px solid var(--line);background:#fff;border-radius:14px;pad
 .list .mv:disabled{opacity:.35}
 .empty{color:var(--ink-m);font-size:13px;text-align:center;padding:14px 0}
 nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);border-top:2px dotted var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);z-index:5}
-nav button{border:none;background:none;font-family:inherit;font-size:11px;color:var(--ink-m);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px}
+nav button{border:none;background:none;font-family:inherit;font-size:11px;color:var(--ink-m);display:flex;flex-direction:column;align-items:center;gap:2px;min-width:56px}
 nav button .ic{font-size:21px;line-height:1}
 nav button.on{color:var(--pink-d);font-weight:700}
 section{display:none}
@@ -93,6 +93,8 @@ input:focus,select:focus{outline:none;border-color:var(--pink)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:7px 4px;border-bottom:1px dashed var(--line);text-align:right}
 td:first-child,th:first-child{text-align:left}
+td.neg{color:var(--bad);font-weight:700}
+td.pos{color:var(--ok);font-weight:700}
 th{font-size:11px;color:var(--ink-m);font-weight:500}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9}
 .toast.on{opacity:.92}
@@ -168,6 +170,30 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
   </div>
 </section>
 
+<!-- ふりかえり -->
+<section id="tab-hist">
+  <div class="card">
+    <h2>🐷 貯金残高</h2>
+    <div class="row"><div><div class="sub" id="savLabel">最新の残高</div><div class="big" id="savNow">—</div></div><div class="sub" id="savDiff" style="text-align:right"></div></div>
+    <div class="chartbox" style="height:200px;margin-top:8px"><canvas id="savChart" role="img" aria-label="月末の貯金残高の推移"></canvas></div>
+    <div class="btns"><button class="main blue" id="savAdd">＋ 月末の貯金を記録</button></div>
+  </div>
+  <div class="card">
+    <h2>💰 収支（入金と自分の負担）</h2>
+    <div class="sub">入金は給与・賞与、自分の負担はカード・現金など自分で払った分。</div>
+    <div class="legend" style="margin-top:8px"><span><i style="background:#a8e6cf"></i>入金</span><span><i style="background:#f7a8c8"></i>自分の負担</span></div>
+    <div class="chartbox" style="height:220px"><canvas id="cfChart" role="img" aria-label="月ごとの入金と自分の負担"></canvas></div>
+    <table style="margin-top:10px"><thead><tr><th>月</th><th>入金</th><th>負担</th><th>うち現金</th><th>差額</th></tr></thead><tbody id="cfTable"></tbody></table>
+    <div class="sub" id="cfSum" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>🎀 遊び系の内訳（使った月）</h2>
+    <div class="legend" id="funLegend"></div>
+    <div class="chartbox"><canvas id="funChart" role="img" aria-label="月ごとの遊び系支出の内訳"></canvas></div>
+    <table style="margin-top:10px"><thead><tr><th>項目</th><th>月平均</th></tr></thead><tbody id="funTable"></tbody></table>
+  </div>
+</section>
+
 <!-- せってい -->
 <section id="tab-set">
   <div class="card">
@@ -203,6 +229,7 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
   <button data-tab="home" class="on"><span class="ic">🐶</span>ホーム</button>
   <button data-tab="log"><span class="ic">📒</span>きろく</button>
   <button data-tab="family"><span class="ic">🏠</span>家族</button>
+  <button data-tab="hist"><span class="ic">📊</span>ふりかえり</button>
   <button data-tab="set"><span class="ic">🎀</span>せってい</button>
 </nav>
 
@@ -233,6 +260,14 @@ th{font-size:11px;color:var(--ink-m);font-weight:500}
   <div class="btns"><button class="ghost" type="button" id="wCancel">やめる</button><button class="main" type="submit">合わせる</button></div>
 </form></dialog>
 
+<dialog id="savDlg"><form class="dlg" method="dialog" id="savForm" novalidate>
+  <h3>🐷 月末の貯金残高を記録</h3>
+  <label for="sMonth">月</label><input id="sMonth" type="month">
+  <label for="sAmt">月末の残高（円）</label><input id="sAmt" type="number" inputmode="numeric" min="0" step="1">
+  <div class="err" id="sErr"></div>
+  <div class="btns"><button class="ghost" type="button" id="sCancel">やめる</button><button class="main blue" type="submit">保存する</button></div>
+</form></dialog>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -252,9 +287,9 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && s.settings && Array.isArray(s.entries)) { s.family = s.family || {}; if (!Array.isArray(s.settings.cashCats)) s.settings.cashCats = DEFAULT_CATS.slice(); return s; }
+    if (s && s.settings && Array.isArray(s.entries)) { s.family = s.family || {}; s.history = Object.assign({ savings: {}, cashflow: {}, fun: {} }, s.history || {}); if (!Array.isArray(s.settings.cashCats)) s.settings.cashCats = DEFAULT_CATS.slice(); return s; }
   } catch (e) {}
-  return { settings: { cashBudget: 20000, clothesBudget: 15000, cashCats: DEFAULT_CATS.slice() }, entries: [], family: {} };
+  return { settings: { cashBudget: 20000, clothesBudget: 15000, cashCats: DEFAULT_CATS.slice() }, entries: [], family: {}, history: { savings: {}, cashflow: {}, fun: {} } };
 }
 let state = load();
 const cashCats = () => state.settings.cashCats.filter((c) => c !== FIXED_CAT).concat(FIXED_CAT);
@@ -412,15 +447,62 @@ function drawPie() {
   else famPie = new Chart(document.getElementById('famPie'), { type: 'doughnut', data, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { color: '#5a4a63', boxWidth: 10, font: { family: 'Zen Maru Gothic' } } }, tooltip: { callbacks: { label: (c) => { const t = c.dataset.data.reduce((a, b) => a + b, 0) || 1; return c.label + ' ' + yen(c.raw) + '（' + Math.round(c.raw / t * 100) + '%）'; } } } } } });
 }
 
+const FUN_CATS = ['美容','飲み会','服','推し活','漫画・サブスク','外食','旅行','不明な現金'];
+const FUN_COLORS = ['#f7a8c8','#ffd59e','#c9b8f0','#9fd3f2','#a8e6cf','#ffc2a8','#b9e3d4','#d9cfc7'];
+const mLabel = (m) => (m.slice(2, 4) === new Date().getFullYear().toString().slice(2) ? '' : m.slice(2, 4) + '/') + (+m.slice(5)) + '月';
+let savChart, cfChart, funChart;
+const axisY = { ticks: { color: '#8f7f99', callback: (v) => (Math.round(v / 1000) / 10) + '万' }, grid: { color: '#f6eef3' } };
+const axisX = { grid: { display: false }, ticks: { color: '#8f7f99', autoSkip: false, maxRotation: 0 } };
+function upsertChart(old, el, cfg) { if (old) { old.data = cfg.data; old.update(); return old; } return new Chart(el, cfg); }
+function renderHist() {
+  const H = state.history;
+  const sm = Object.keys(H.savings).sort();
+  if (sm.length) {
+    const last = sm[sm.length - 1];
+    document.getElementById('savLabel').textContent = last.replace('-', '年') + '月末の残高';
+    document.getElementById('savNow').textContent = yen(H.savings[last]);
+    const sd = document.getElementById('savDiff');
+    if (sm.length > 1) { const d = H.savings[last] - H.savings[sm[sm.length - 2]]; sd.textContent = '前の月より ' + (d >= 0 ? '+' : '−') + yen(Math.abs(d)); sd.style.color = d >= 0 ? 'var(--ok)' : 'var(--bad)'; }
+    else sd.textContent = '';
+  } else { document.getElementById('savLabel').textContent = '最新の残高'; document.getElementById('savNow').textContent = '—'; document.getElementById('savDiff').textContent = 'データを読み込むか、記録してね'; }
+  const cm = Object.keys(H.cashflow).sort();
+  const tb = document.getElementById('cfTable');
+  if (!cm.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">まだデータがないよ。せってい→読み込むで、ふりかえりデータのファイルを入れてね</td></tr>'; document.getElementById('cfSum').textContent = ''; }
+  else {
+    tb.replaceChildren(...cm.slice().reverse().map((m) => {
+      const r = H.cashflow[m], tr = document.createElement('tr');
+      [mLabel(m), yen(r['入金']), yen(r['自分の負担']), yen(r['うち現金'] || 0)].forEach((t) => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
+      const td = document.createElement('td'); const d = r['差額']; td.textContent = (d >= 0 ? '+' : '−') + yen(Math.abs(d)); td.className = d >= 0 ? 'pos' : 'neg'; tr.appendChild(td);
+      return tr;
+    }));
+    const tot = cm.reduce((a, m) => a + H.cashflow[m]['差額'], 0);
+    document.getElementById('cfSum').textContent = cm.length + 'か月の差額の合計：' + (tot >= 0 ? '+' : '−') + yen(Math.abs(tot));
+  }
+  const fm = Object.keys(H.fun).sort();
+  document.getElementById('funLegend').innerHTML = FUN_CATS.map((c, i) => '<span><i style="background:' + FUN_COLORS[i] + '"></i>' + c + '</span>').join('');
+  const ft = document.getElementById('funTable');
+  if (!fm.length) ft.innerHTML = '<tr><td colspan="2" class="empty">まだデータがないよ</td></tr>';
+  else {
+    const rows = FUN_CATS.map((c) => [c, fm.reduce((a, m) => a + (+H.fun[m][c] || 0), 0) / fm.length]).sort((a, b) => b[1] - a[1]);
+    const total = rows.reduce((a, r) => a + r[1], 0);
+    ft.replaceChildren(...rows.concat([['合計', total]]).map(([c, v]) => { const tr = document.createElement('tr'); const a = document.createElement('td'); a.textContent = c; const b = document.createElement('td'); b.textContent = yen(v); if (c === '合計') { a.style.fontWeight = b.style.fontWeight = '700'; } tr.append(a, b); return tr; }));
+  }
+  if (typeof Chart === 'undefined') return;
+  savChart = upsertChart(savChart, document.getElementById('savChart'), { type: 'line', data: { labels: sm.map(mLabel), datasets: [{ data: sm.map((m) => H.savings[m]), borderColor: '#9fd3f2', backgroundColor: 'rgba(159,211,242,.18)', fill: true, tension: 0, pointRadius: 4, pointBackgroundColor: '#3f8fc4', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => yen(c.raw) } } }, scales: { x: axisX, y: { ...axisY, ticks: { ...axisY.ticks, callback: (v) => Math.round(v / 10000) + '万' } } } } });
+  cfChart = upsertChart(cfChart, document.getElementById('cfChart'), { type: 'bar', data: { labels: cm.map(mLabel), datasets: [{ label: '入金', data: cm.map((m) => H.cashflow[m]['入金']), backgroundColor: '#a8e6cf', borderRadius: 4, maxBarThickness: 14 }, { label: '自分の負担', data: cm.map((m) => H.cashflow[m]['自分の負担']), backgroundColor: '#f7a8c8', borderRadius: 4, maxBarThickness: 14 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.dataset.label + ' ' + yen(c.raw) } } }, scales: { x: axisX, y: axisY } } });
+  funChart = upsertChart(funChart, document.getElementById('funChart'), { type: 'bar', data: { labels: fm.map(mLabel), datasets: FUN_CATS.map((c, i) => ({ label: c, data: fm.map((m) => +H.fun[m][c] || 0), backgroundColor: FUN_COLORS[i], borderColor: '#fff', borderWidth: 1, borderRadius: 3, maxBarThickness: 24 })) }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { filter: (i) => i.raw > 0, callbacks: { label: (c) => c.dataset.label + ' ' + yen(c.raw), footer: (items) => '合計 ' + yen(items.reduce((a, i) => a + i.raw, 0)) } } }, scales: { x: { ...axisX, stacked: true }, y: { ...axisY, stacked: true } } } });
+}
+
 function renderAll() {
   document.getElementById('monthLabel').textContent = curYM.replace('-', '年') + '月';
-  renderHome(); renderLog(); renderFamily();
+  renderHome(); renderLog(); renderFamily(); renderHist();
 }
 
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('section').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'family') { famChart && famChart.resize(); famPie && famPie.resize(); }
+  if (b.dataset.tab === 'hist') { savChart && savChart.resize(); cfChart && cfChart.resize(); funChart && funChart.resize(); }
   if (b.dataset.tab === 'set') { document.getElementById('setCash').value = state.settings.cashBudget; document.getElementById('setClothes').value = state.settings.clothesBudget; document.getElementById('catErr').textContent = ''; renderCats(); }
   window.scrollTo(0, 0);
 });
@@ -487,6 +569,19 @@ document.getElementById('walletForm').addEventListener('submit', (ev) => {
   else if (diff < 0) state.entries.push({ id: uid(), type: 'cash', date, amount: -diff, cat: 'わからない', memo: '財布チェックの差' });
   save(); wdlg.close(); curYM = date.slice(0, 7); renderAll();
   toast(diff === 0 ? 'ぴったり！えらい🐾' : diff > 0 ? yen(diff) + 'を手持ちに追加したよ👛' : yen(-diff) + 'は使い道わからない分として記録したよ');
+});
+
+const sdlg = document.getElementById('savDlg');
+document.getElementById('savAdd').onclick = () => { document.getElementById('sMonth').value = ymOf(new Date()); document.getElementById('sAmt').value = state.history.savings[ymOf(new Date())] ?? ''; document.getElementById('sErr').textContent = ''; sdlg.showModal(); };
+document.getElementById('sMonth').addEventListener('change', () => { document.getElementById('sAmt').value = state.history.savings[document.getElementById('sMonth').value] ?? ''; document.getElementById('sErr').textContent = ''; });
+document.getElementById('sAmt').addEventListener('input', () => { document.getElementById('sErr').textContent = ''; });
+document.getElementById('sCancel').onclick = () => sdlg.close();
+document.getElementById('savForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const m = document.getElementById('sMonth').value, v = document.getElementById('sAmt').value, err = document.getElementById('sErr');
+  if (!m) { err.textContent = '月を選んでね'; return; }
+  if (v === '' || isNaN(+v) || +v < 0) { err.textContent = '残高を入れてね'; return; }
+  state.history.savings[m] = Math.round(+v); save(); sdlg.close(); renderHist(); toast('貯金を記録したよ🐷');
 });
 
 const fdlg = document.getElementById('famDlg');
@@ -568,6 +663,13 @@ document.getElementById('importFile').addEventListener('change', async (ev) => {
     if (d.family && typeof d.family === 'object') {
       Object.entries(d.family).forEach(([m, r]) => { if (/^\d{4}-\d{2}$/.test(m) && r && typeof r === 'object') { const o = {}; FAM_CATS.forEach((c) => { o[c] = Math.max(0, Math.round(+r[c] || 0)); }); state.family[m] = o; n++; } });
     }
+    let h = 0;
+    if (d.history && typeof d.history === 'object') {
+      const okM = (m) => /^\d{4}-\d{2}$/.test(m);
+      if (d.history.savings) Object.entries(d.history.savings).forEach(([m, v]) => { if (okM(m) && +v >= 0) { state.history.savings[m] = Math.round(+v); h++; } });
+      if (d.history.cashflow) Object.entries(d.history.cashflow).forEach(([m, r]) => { if (okM(m) && r) { state.history.cashflow[m] = { 入金: Math.round(+r['入金'] || 0), 自分の負担: Math.round(+r['自分の負担'] || 0), うち現金: Math.round(+r['うち現金'] || 0), 差額: Math.round(+r['差額'] || 0) }; h++; } });
+      if (d.history.fun) Object.entries(d.history.fun).forEach(([m, r]) => { if (okM(m) && r) { const o = {}; FUN_CATS.forEach((c) => { o[c] = Math.max(0, Math.round(+r[c] || 0)); }); state.history.fun[m] = o; h++; } });
+    }
     let k = 0;
     if (Array.isArray(d.entries)) {
       const ids = new Set(state.entries.map((e) => e.id));
@@ -577,8 +679,8 @@ document.getElementById('importFile').addEventListener('change', async (ev) => {
       state.settings.cashBudget = +d.settings.cashBudget; state.settings.clothesBudget = +d.settings.clothesBudget;
       if (Array.isArray(d.settings.cashCats)) { const cs = d.settings.cashCats.map((c) => String(c).trim().slice(0, 12)).filter((c) => c && c !== FIXED_CAT); if (cs.length) state.settings.cashCats = [...new Set(cs)].slice(0, 20); }
     }
-    if (!n && !k && !d.settings) throw new Error('empty');
-    save(); renderAll(); toast('読み込んだよ（家族 ' + n + 'か月・きろく ' + k + '件）');
+    if (!n && !k && !h && !d.settings) throw new Error('empty');
+    save(); renderAll(); toast('読み込んだよ（家族 ' + n + 'か月・きろく ' + k + '件' + (h ? '・ふりかえり' : '') + '）');
   } catch (e) { toast('このファイルは読み込めなかったよ'); }
 });
 
